@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>店铺经营分析 Agent</title>
+<script src="vendor/echarts.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif; background:#F6F7F9; color:#1E293B; height:100vh; overflow:hidden; }
+  ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-thumb { background:#D8DEE7; border-radius:3px; }
+  button { cursor:pointer; }
+  #v-login { height:100vh; display:none; }
+  #v-login.on { display:flex; }
+  .l-left { flex:1.15; background:linear-gradient(135deg,#065F46 0%,#0E7490 55%,#1D4ED8 100%); color:#fff; display:flex; flex-direction:column; justify-content:center; padding:0 7%; }
+  .l-left h1 { font-size:30px; margin-bottom:12px; }
+  .l-left .sub { color:#ffffffCC; font-size:14.5px; }
+  .l-left .feat { margin-top:26px; }
+  .l-left .feat div { padding:7px 0; font-size:14px; }
+  .l-left .feat b { display:inline-block; width:24px; height:24px; background:#ffffff2E; border-radius:7px; text-align:center; line-height:24px; margin-right:10px; font-size:12px; }
+  .l-right { flex:1; display:flex; align-items:center; justify-content:center; }
+  .l-card { width:360px; background:#fff; border:1px solid #E8ECF1; border-radius:18px; padding:34px 32px; box-shadow:0 12px 40px #0f172a14; }
+  .l-card h2 { font-size:20px; margin-bottom:6px; }
+  .l-card .sub { color:#94A3B8; font-size:13px; margin-bottom:20px; }
+  .l-card label { font-size:13px; color:#475569; display:block; margin:12px 0 6px; }
+  .l-card input { width:100%; border:1px solid #E2E8F0; border-radius:10px; padding:11px 13px; font-size:14px; outline:none; }
+  .l-card input:focus { border-color:#10B981; box-shadow:0 0 0 3px #10B98122; }
+  .l-btn { width:100%; background:linear-gradient(135deg,#10B981,#0EA5E9); color:#fff; border:none; border-radius:10px; padding:12px; font-size:15px; font-weight:600; margin-top:18px; }
+  .l-err { color:#DC2626; font-size:12.5px; margin-top:10px; min-height:16px; }
+  .l-tip { margin-top:14px; font-size:12px; color:#94A3B8; text-align:center; }
+  #v-app { display:none; height:100vh; flex-direction:column; }
+  #v-app.on { display:flex; }
+  header { background:#fff; border-bottom:1px solid #E8ECF1; height:56px; display:flex; align-items:center; padding:0 22px; gap:16px; flex-shrink:0; }
+  .logo { font-weight:700; font-size:15.5px; display:flex; gap:9px; align-items:center; }
+  .logo .dot { width:29px; height:29px; border-radius:9px; background:linear-gradient(135deg,#10B981,#0EA5E9); color:#fff; display:flex; align-items:center; justify-content:center; }
+  .dsbadge { font-size:12px; color:#059669; background:#ECFDF5; border:1px solid #A7F3D0; border-radius:999px; padding:3px 11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:340px; }
+  .hright { margin-left:auto; display:flex; gap:12px; align-items:center; font-size:13px; color:#64748B; }
+  .hright .out { cursor:pointer; color:#DC2626; }
+  .shell { flex:1; display:flex; overflow:hidden; }
+  nav { width:172px; background:#fff; border-right:1px solid #E8ECF1; padding:12px 8px; flex-shrink:0; }
+  nav a { display:flex; gap:9px; align-items:center; padding:10px 12px; border-radius:10px; color:#64748B; font-size:13.5px; cursor:pointer; margin-bottom:2px; }
+  nav a.on { background:#ECFDF5; color:#059669; font-weight:600; }
+  main { flex:1; overflow:auto; padding:18px 22px; }
+  .page { display:none; height:100%; } .page.on { display:block; }
+  h2.pt { font-size:17px; margin-bottom:3px; } .pdesc { color:#94A3B8; font-size:12.5px; margin-bottom:14px; }
+  .card { background:#fff; border:1px solid #E8ECF1; border-radius:14px; padding:15px 16px; margin-bottom:13px; }
+  .card h3 { font-size:14px; margin-bottom:10px; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:13px; }
+  .kpi { background:#fff; border:1px solid #E8ECF1; border-radius:14px; padding:14px 16px; }
+  .kpi .t { font-size:12.5px; color:#64748B; } .kpi .v { font-size:22px; font-weight:700; margin-top:5px; font-variant-numeric:tabular-nums; }
+  .kpi .d { font-size:12px; margin-top:4px; color:#059669; } .kpi .d.bad { color:#DC2626; }
+  .grid2 { display:grid; grid-template-columns:1.7fr 1fr; gap:13px; }
+  .chart { height:220px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:#94A3B8; font-weight:500; font-size:12px; padding:7px 8px; border-bottom:1px solid #EEF1F5; }
+  td { padding:9px 8px; border-bottom:1px solid #F6F8FA; }
+  .pill { font-size:11px; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .p-down { background:#FEF2F2; color:#DC2626; } .p-up { background:#ECFDF5; color:#059669; } .p-flat { background:#F1F5F9; color:#64748B; }
+  .empty { text-align:center; color:#94A3B8; padding:44px 0; font-size:13.5px; }
+  .chatwrap { display:flex; gap:14px; height:calc(100% - 52px); }
+  .sesslist { width:200px; flex-shrink:0; overflow:auto; }
+  .sessitem { background:#fff; border:1px solid #E8ECF1; border-radius:11px; padding:9px 11px; margin-bottom:7px; font-size:12.5px; cursor:pointer; }
+  .sessitem.on { border-color:#10B981; background:#F0FDF9; }
+  .sessitem .t { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sessitem .m { color:#94A3B8; font-size:11px; margin-top:2px; display:flex; justify-content:space-between; }
+  .sessitem .del { color:#DC2626; cursor:pointer; }
+  .chatcol { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .chatlog { flex:1; overflow:auto; padding-right:6px; }
+  .bubble { max-width:84%; padding:12px 15px; border-radius:15px; font-size:13.5px; line-height:1.62; margin-bottom:12px; word-break:break-word; }
+  .user-b { background:#0EA5E9; color:#fff; margin-left:auto; width:fit-content; border-bottom-right-radius:5px; }
+  .ai-b { background:#fff; border:1px solid #E8ECF1; border-bottom-left-radius:5px; box-shadow:0 1px 2px #0f172a0a; }
+  .steps { display:flex; gap:6px; margin:9px 0 11px; flex-wrap:wrap; }
+  .step { font-size:11.5px; padding:4px 10px; border-radius:999px; background:#F1F5F9; border:1px solid #E2E8F0; color:#64748B; }
+  .step.done { border-color:#A7F3D0; color:#059669; background:#ECFDF5; }
+  .step.run { border-color:#7DD3FC; color:#0284C7; background:#F0F9FF; animation:pulse 1.2s infinite; }
+  .step.bad { border-color:#FECACA; color:#DC2626; background:#FEF2F2; }
+  @keyframes pulse { 50% { opacity:.5; } }
+  .cursor { display:inline-block; width:7px; height:13px; background:#0EA5E9; vertical-align:middle; margin-left:3px; animation:bl 1s infinite; }
+  @keyframes bl { 50% { opacity:0 } }
+  .ver { font-size:11px; background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; padding:2px 9px; border-radius:999px; }
+  .ver.warn { background:#FFFBEB; color:#B45309; border-color:#FDE68A; }
+  .task { font-size:11px; color:#94A3B8; }
+  .finding { padding:9px 0; border-top:1px dashed #EEF1F5; font-size:13px; line-height:1.6; }
+  .finding b.v { color:#0EA5E9; }
+  .trace { font-size:11px; color:#059669; background:#ECFDF5; padding:1px 8px; border-radius:5px; }
+  .reco { background:#F8FAFC; border:1px solid #EEF1F5; border-radius:10px; padding:10px 12px; margin-top:8px; font-size:12.5px; line-height:1.6; }
+  .conf { font-size:11px; padding:2px 8px; border-radius:999px; margin-right:6px; }
+  .conf.high { background:#ECFDF5; color:#059669; } .conf.low { background:#FFFBEB; color:#B45309; }
+  .caveat { font-size:12px; color:#B45309; background:#FFFBEB; border:1px solid #FDE68A; border-radius:9px; padding:7px 11px; margin-top:9px; }
+  .charts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .charts img { width:100%; border:1px solid #EEF1F5; border-radius:9px; }
+  .chips { display:flex; gap:7px; margin:9px 0 2px; flex-wrap:wrap; }
+  .chip { font-size:12px; color:#475569; background:#fff; border:1px solid #E2E8F0; border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .chip:hover { border-color:#059669; color:#059669; }
+  .chatinput { background:#fff; border:1px solid #E8ECF1; border-radius:13px; padding:11px 13px; display:flex; gap:9px; margin-top:9px; }
+  .chatinput input { flex:1; border:none; outline:none; font-size:13.5px; background:transparent; }
+  .send { background:#059669; color:#fff; border:none; border-radius:9px; padding:8px 17px; font-size:13px; }
+  .send:disabled { background:#A7D7C5; }
+  .searchbox { display:flex; gap:9px; margin-bottom:13px; }
+  .searchbox input { flex:1; border:1px solid #E2E8F0; border-radius:11px; padding:11px 14px; font-size:13.5px; outline:none; }
+  .searchbox button { background:#059669; color:#fff; border:none; border-radius:11px; padding:0 20px; }
+  .seg { display:flex; gap:6px; margin-bottom:12px; }
+  .seg span { font-size:12.5px; padding:6px 14px; border-radius:999px; background:#fff; border:1px solid #E2E8F0; cursor:pointer; color:#64748B; }
+  .seg span.on { background:#ECFDF5; border-color:#A7F3D0; color:#059669; font-weight:600; }
+  .histrow { background:#fff; border:1px solid #E8ECF1; border-radius:12px; padding:12px 15px; margin-bottom:9px; display:flex; gap:13px; align-items:center; cursor:pointer; }
+  .histrow:hover { border-color:#7DD3FC; }
+  .histrow .t { flex:1; min-width:0; } .histrow .q { font-size:13.5px; font-weight:600; }
+  .histrow .m { font-size:11.5px; color:#94A3B8; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .time { font-size:11.5px; color:#94A3B8; white-space:nowrap; }
+  .facts { background:linear-gradient(135deg,#F0FDF9,#F0F9FF); border:1px solid #A7F3D0; border-radius:13px; padding:14px 16px; margin-bottom:13px; }
+  .facts h3 { font-size:13.5px; margin-bottom:7px; } .facts li { font-size:12.5px; color:#334155; line-height:1.85; list-style:none; }
+  .factrow { display:flex; align-items:flex-start; gap:8px; padding:4px 0; }
+  .factrow span { flex:1; }
+  .factrow button { border:none; background:transparent; cursor:pointer; font-size:12px; color:#64748B; }
+  .factrow button:hover { color:#059669; }
+  .toolbtn { background:#fff; border:1px solid #E2E8F0; border-radius:9px; padding:6px 12px; font-size:12.5px; color:#475569; cursor:pointer; }
+  .toolbtn:hover { border-color:#10B981; color:#059669; }
+  .facts em, .memhit em { font-style:normal; background:#FEF08A; border-radius:3px; }
+  .memhit { background:#fff; border:1px solid #E8ECF1; border-radius:12px; padding:13px 15px; margin-bottom:10px; }
+  .memhit .q { font-size:13.5px; font-weight:600; margin-bottom:5px; }
+  .memhit .a { font-size:12.5px; color:#475569; line-height:1.65; }
+  .memhit .meta { font-size:11.5px; color:#94A3B8; margin-top:7px; display:flex; gap:12px; flex-wrap:wrap; }
+  .memhit .meta a { color:#0284C7; cursor:pointer; }
+  .drop { border:1.5px dashed #C7D2DE; border-radius:14px; padding:34px; text-align:center; font-size:13.5px; color:#64748B; cursor:pointer; transition:.15s; background:#fff; }
+  .drop.on { border-color:#10B981; background:#F0FDF9; }
+  .upstate { font-size:12.5px; margin-top:10px; line-height:1.7; }
+  .ok { color:#059669; } .warn { color:#B45309; } .err { color:#DC2626; }
+  table.prev { width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px; }
+  table.prev th { background:#F8FAFC; padding:4px 6px; border:1px solid #EEF1F5; } table.prev td { padding:4px 6px; border:1px solid #F1F5F9; }
+  #v-pw { position:fixed; inset:0; background:#0f172a66; display:none; align-items:center; justify-content:center; z-index:50; }
+  #v-pw.on { display:flex; }
+  .lglink { text-align:center; margin-top:12px; font-size:12.5px; color:#64748B; }
+  .lglink a { color:#0284C7; cursor:pointer; }
+  .hright { position:relative; }
+  .umenu { position:absolute; right:0; top:34px; background:#fff; border:1px solid #E8ECF1; border-radius:12px; padding:13px 15px; width:270px; box-shadow:0 8px 30px #0f172a1a; display:none; z-index:40; text-align:left; }
+  .umenu.on { display:block; }
+  .umenu .h { font-size:11.5px; color:#94A3B8; margin:9px 0 4px; }
+  .umenu .h:first-child { margin-top:0; }
+  .umenu .code { font-family:monospace; background:#F1F5F9; border-radius:8px; padding:7px 10px; font-size:14.5px; letter-spacing:1.5px; display:flex; justify-content:space-between; align-items:center; }
+  .umenu a.act { color:#0284C7; cursor:pointer; font-size:12px; }
+  .umenu .acc { font-size:12.5px; padding:3px 0; display:flex; justify-content:space-between; }
+  @media (max-width:1080px) { .sesslist { display:none; } .kpis { grid-template-columns:1fr 1fr; } }
+  html[data-theme="dark"] body { background:#0F172A; color:#E2E8F0; }
+  html[data-theme="dark"] header, nav, .card, .kpi, .sessitem, .bubble.ai-b,
+  html[data-theme="dark"] .searchbox input, .drop, .facts, .memhit, .histrow,
+  html[data-theme="dark"] .l-card, .umenu { background:#1E293B; border-color:#334155; color:#E2E8F0; }
+  html[data-theme="dark"] .pdesc, .time, .task, .kpi .t, .umenu .h { color:#94A3B8; }
+  html[data-theme="dark"] .l-left { background:linear-gradient(135deg,#064E3B 0%,#0E7490 55%,#1E3A8A 100%); }
+  html[data-theme="dark"] .toolbtn { background:#111827; border-color:#334155; color:#CBD5E1; }
+  html[data-theme="dark"] .toolbtn:hover { border-color:#34D399; color:#6EE7B7; }
+  body[data-role="viewer"] .chatinput, body[data-role="viewer"] .drop,
+  body[data-role="viewer"] .factrow button { display:none; }
+</style>
+</head>
+<body>
+
+<div id="v-login">
+  <div class="l-left">
+    <h1>🏪 店铺经营分析 Agent</h1>
+    <div class="sub">上传收银数据，用一句话让 AI 完成经营分析</div>
+    <div class="feat">
+      <div><b>1</b>自动规划 → 沙箱执行 → 数据溯源校验，结论可验证</div>
+      <div><b>2</b>经营概况 · 趋势预警 · 进货建议，一屏掌握</div>
+      <div><b>3</b>记忆系统：跨会话记住你的店，随时检索历史对话</div>
+    </div>
+  </div>
+  <div class="l-right"><div class="l-card">
+    <h2 id="lgTitle">欢迎回来</h2><div class="sub" id="lgSub">登录以继续使用分析工作台</div>
+    <div id="lgUserWrap"><label>用户名</label><input id="lgUser" value="admin"></div>
+    <label id="lgOldLbl">密码</label><input id="lgOld" type="password">
+    <div id="lgNewWrap" style="display:none"><label>新密码（至少 8 位）</label><input id="lgNew" type="password"></div>
+    <div id="lgInviteWrap" style="display:none"><label>邀请码（向管理员获取）</label><input id="lgInvite" placeholder="8 位邀请码" style="letter-spacing:2px;text-transform:uppercase"></div>
+    <button class="l-btn" id="lgBtn" onclick="submitLogin()">登 录</button>
+    <div class="l-err" id="lgErr"></div>
+    <div class="lglink"><span id="lgSwitchText">还没有账号？</span><a id="lgSwitch" onclick="toggleReg()">注册新账号</a></div>
+  </div></div>
+</div>
+
+<div id="v-app">
+  <header>
+    <div class="logo"><div class="dot">🏪</div>店铺经营分析 Agent</div>
+    <span class="dsbadge" id="dsBadge">当前数据集：加载中…</span>
+    <div class="hright"><span id="hello"></span>
+      <button class="toolbtn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+      <span style="cursor:pointer" onclick="toggleMenu(event)">账号 ▾</span>
+      <span class="out" onclick="doLogout()">退出</span>
+      <div class="umenu" id="umenu"></div>
+    </div>
+  </header>
+  <div class="shell">
+    <nav>
+      <a data-pg="overview" class="on" onclick="go('overview')">📊 经营概况</a>
+      <a data-pg="chat" onclick="go('chat')">💬 对话分析</a>
+      <a data-pg="history" onclick="go('history')">🗂 历史报告</a>
+      <a data-pg="memory" onclick="go('memory')">🧠 记忆查询</a>
+      <a data-pg="data" onclick="go('data')">📂 数据管理</a>
+    </nav>
+    <main>
+      <div class="page on" id="pg-overview">
+        <div style="display:flex;align-items:center;gap:10px">
+          <h2 class="pt" id="ovTitle">经营概况</h2>
+          <button class="toolbtn" onclick="location.href='/api/export/overview.xlsx'">导出 Excel</button>
+        </div>
+        <div class="pdesc">基于当前数据集自动聚合 · 上传/切换数据集后自动重算</div>
+        <div id="ovBody"><div class="empty">加载中…</div></div>
+      </div>
+      <div class="page" id="pg-chat">
+        <h2 class="pt">对话分析</h2><div class="pdesc">AI 记得本会话最近 8 轮对话与店铺事实</div>
+        <div class="chatwrap">
+          <div class="sesslist" id="sessList"></div>
+          <div class="chatcol">
+            <div class="chatlog" id="chatlog"></div>
+            <div class="chips">
+              <span class="chip">这个月卖得怎么样？卖得最好的是什么？</span>
+              <span class="chip">哪些时段是高峰？</span>
+              <span class="chip">下周该多进什么货？</span>
+              <span class="chip">有没有卖得越来越差、该少进货的商品？</span>
+            </div>
+            <div class="chatinput">
+              <input id="q" placeholder="输入问题…" onkeydown="if(event.key==='Enter')ask()">
+              <button class="send" id="sendBtn" onclick="ask()">发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page" id="pg-history">
+        <h2 class="pt">历史报告</h2><div class="pdesc">全部已完成任务 · 点击任意一行查看完整报告与图表</div>
+        <div class="seg" id="hisSeg">
+          <span class="on" data-v="" onclick="hisFilter(this)">全部</span>
+          <span data-v="ok" onclick="hisFilter(this)">✓ 已溯源</span>
+          <span data-v="warn" onclick="hisFilter(this)">⚠ 未完全溯源</span>
+        </div>
+        <div class="searchbox"><input id="hisQ" placeholder="搜索问题或结论关键词…"><button onclick="loadHistory()">搜索</button></div>
+        <div id="hisList"><div class="empty">加载中…</div></div>
+      </div>
+      <div class="page" id="pg-memory">
+        <h2 class="pt">记忆查询</h2><div class="pdesc">跨会话检索所有历史对话与结论 · Agent 自动沉淀店铺事实卡</div>
+        <div class="facts" id="factsBox"><h3>🧠 店铺事实卡</h3><div class="empty">加载中…</div></div>
+        <div class="searchbox"><input id="memQ" placeholder="输入关键词检索全部历史对话…" onkeydown="if(event.key==='Enter')memSearch()"><button onclick="memSearch()">检索记忆</button></div>
+        <div id="memList"><div class="empty">输入关键词开始检索</div></div>
+      </div>
+      <div class="page" id="pg-data">
+        <h2 class="pt">数据管理</h2><div class="pdesc">上传分析数据集 · 上传后自动设为当前，概况页与对话自动跟随</div>
+        <div class="drop" id="drop" onclick="document.getElementById('file').click()">
+          点击选择或拖入 <b>CSV / Excel</b> 销售数据<div style="font-size:11.5px;color:#94A3B8;margin-top:5px">需含 日期 / 商品名称 / 金额 列 · ≤20MB</div>
+        </div>
+        <input type="file" id="file" accept=".csv,.xlsx" style="display:none" onchange="uploadFile(this.files[0])">
+        <div class="upstate" id="upstate"></div>
+        <div class="card" style="margin-top:13px"><h3>已上传数据集</h3><div id="fileList"><div class="empty">加载中…</div></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="v-pw"><div class="l-card" style="width:340px">
+  <h2>修改初始密码</h2><div class="sub">安全要求：首次登录必须修改默认密码</div>
+  <label>当前密码</label><input id="pwOld" type="password" placeholder="当前密码">
+  <label>新密码（至少 8 位）</label><input id="pwNew" type="password">
+  <button class="l-btn" onclick="doChangePw()">确认修改</button>
+  <div class="l-err" id="pwErr"></div>
+</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let ME = null, CUR_SESS = null, BUSY = false, HIS_VER = "", CURRENT_FILE = "";
+
+function applyTheme() {
+  const saved = localStorage.getItem("theme");
+  const theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.dataset.theme = theme;
+  $("themeBtn").textContent = theme === "dark" ? "☀️" : "🌙";
+}
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", next);
+  applyTheme();
+  render();
+}
+
+async function api(path, opts = {}) {
+  opts.credentials = "include";
+  opts.headers = Object.assign({"X-Token": localStorage.getItem("token") || ""}, opts.headers || {});
+  if (opts.json) { opts.method = opts.method || "POST";
+    opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(opts.json); }
+  if (opts.form) { opts.method = opts.method || "POST"; opts.body = new URLSearchParams(opts.form); }
+  const r = await fetch(path, opts);
+  if (r.status === 401) { showLogin(); throw new Error("未登录"); }
+  if (r.status === 403) { const t = await r.text();
+    if (t.includes("PASSWORD_CHANGE_REQUIRED")) { forcePw(); throw new Error("需要修改密码"); } }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || ("HTTP " + r.status));
+  return d;
+}
+
+/* ---------- 登录流程 ---------- */
+let PW_MODE = false, REG_MODE = false;
+function toggleReg() {
+  REG_MODE = !REG_MODE;
+  $("lgTitle").textContent = REG_MODE ? "注册新账号" : "欢迎回来";
+  $("lgSub").textContent = REG_MODE ? "凭管理员提供的邀请码创建账号" : "登录以继续使用分析工作台";
+  $("lgInviteWrap").style.display = REG_MODE ? "block" : "none";
+  $("lgBtn").textContent = REG_MODE ? "注 册 并 登 录" : "登 录";
+  $("lgSwitchText").textContent = REG_MODE ? "已有账号？" : "还没有账号？";
+  $("lgSwitch").textContent = REG_MODE ? "返回登录" : "注册新账号";
+  $("lgErr").textContent = "";
+}
+async function toggleMenu(ev) {
+  ev.stopPropagation();
+  const m = $("umenu");
+  if (m.classList.contains("on")) { m.classList.remove("on"); return; }
+  if (!ME) return;
+  m.classList.add("on");
+  m.innerHTML = `<div class="h">当前用户</div>
+    <div class="acc"><span>${esc(ME.username || "demo")}</span><span style="color:#94A3B8">${esc(ME.role || "staff")}</span></div>`;
+  if ((ME.role || "") === "admin") {
+    try {
+      const inv = await api("/api/invite");
+      const accs = await api("/api/accounts");
+      m.innerHTML += `<div class="h">注册邀请码（新账号注册时需填）</div>
+        <div class="code"><span id="invCode">${esc(inv.invite)}</span><a class="act" onclick="rotateInvite()">换一个</a></div>
+        <div class="h">全部账号（${accs.accounts.length}）</div>` +
+        accs.accounts.map(a => `<div class="acc">
+          <span>${esc(a.username)}${a.disabled ? "（已禁用）" : ""}</span>
+          <span style="color:#94A3B8">${esc(a.role)}</span>
+          <span>
+            <a class="act" onclick="${a.disabled ? `enableAccount(${a.id})` : `disableAccount(${a.id})`}">${a.disabled ? "启用" : "禁用"}</a>
+            <a class="act" onclick="resetAccountPassword(${a.id})">重置</a>
+            <a class="act" onclick="deleteAccount(${a.id})">删除</a>
+            <a class="act" onclick="changeAccountRole(${a.id},'viewer')">只读</a>
+            <a class="act" onclick="changeAccountRole(${a.id},'staff')">店员</a>
+            <a class="act" onclick="changeAccountRole(${a.id},'admin')">管理员</a>
+          </span></div>`).join("");
+    } catch (e) { m.innerHTML += `<div class="h">${esc(e.message)}</div>`; }
+  }
+  m.innerHTML += `<div class="h">操作</div><div class="acc"><a class="act" onclick="openPwModal()">修改密码</a></div>`;
+}
+async function rotateInvite() { const d = await api("/api/invite", {method: "POST"}); $("invCode").textContent = d.invite; }
+async function disableAccount(id) { if (!confirm("确认禁用该账号？")) return; await api(`/api/accounts/${id}/disable`, {method: "POST"}); toggleMenu({stopPropagation(){}}); }
+async function enableAccount(id) { await api(`/api/accounts/${id}/enable`, {method: "POST"}); toggleMenu({stopPropagation(){}}); }
+async function deleteAccount(id) { if (!confirm("确认删除该账号？")) return; await api(`/api/accounts/${id}`, {method: "DELETE"}); toggleMenu({stopPropagation(){}}); }
+async function resetAccountPassword(id) {
+  const pw = prompt("请输入新密码（至少 8 位）");
+  if (!pw) return;
+  await api(`/api/accounts/${id}/reset-password`, {method: "POST", json: {password: pw}});
+  alert("已重置，该账号下次登录需修改密码");
+}
+async function changeAccountRole(id, role) {
+  if (!confirm(`确认将该账号设为 ${role}？`)) return;
+  await api(`/api/accounts/${id}/role`, {method: "PATCH", json: {role}});
+  toggleMenu({stopPropagation(){}});
+}
+function openPwModal() { $("umenu").classList.remove("on"); $("pwOld").value = ""; $("pwNew").value = ""; $("v-pw").classList.add("on"); }
+document.addEventListener("click", e => { const m = $("umenu");
+  if (m && m.classList.contains("on") && !m.contains(e.target)) m.classList.remove("on"); });
+function showLogin() { $("v-app").classList.remove("on"); $("v-login").classList.add("on"); $("v-pw").classList.remove("on"); }
+function forcePw() { PW_MODE = true;
+  $("lgTitle").textContent = "首次登录 · 修改密码"; $("lgSub").textContent = "请设置新密码（至少 8 位），成功后自动进入";
+  $("lgUserWrap").style.display = "none"; $("lgNewWrap").style.display = "block";
+  $("lgBtn").textContent = "确认修改并进入"; }
+async function submitLogin() {
+  $("lgErr").textContent = "";
+  if (REG_MODE) {
+    try {
+      const r = await fetch("/api/register", {method: "POST", credentials: "include",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({username: $("lgUser").value, password: $("lgOld").value,
+                              invite: $("lgInvite").value})});
+      const d = await r.json();
+      if (!r.ok) { $("lgErr").textContent = d.detail || "注册失败"; return; }
+      await boot(); location.hash = "#/overview";
+    } catch (e) { $("lgErr").textContent = "网络错误: " + e.message; }
+    return;
+  }
+  if (PW_MODE) {
+    try {
+      await api("/api/password", {json: {old: $("lgOld").value, new: $("lgNew").value}});
+      PW_MODE = false; $("lgOld").value = $("lgNew").value;
+      await boot(); location.hash = "#/overview";
+    } catch (e) { $("lgErr").textContent = e.message; }
+    return;
+  }
+  try {
+    const r = await fetch("/api/login", {method: "POST", credentials: "include",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({username: $("lgUser").value, password: $("lgOld").value})});
+    const d = await r.json();
+    if (!r.ok) { $("lgErr").textContent = d.detail || "登录失败"; return; }
+    if (d.must_change_password) { forcePw(); return; }
+    await boot(); location.hash = "#/overview";
+  } catch (e) { $("lgErr").textContent = "网络错误: " + e.message; }
+}
+async function doChangePw() {
+  try { await api("/api/password", {json: {old: $("pwOld").value, new: $("pwNew").value}});
+    $("v-pw").classList.remove("on"); alert("密码已修改"); }
+  catch (e) { $("pwErr").textContent = e.message; }
+}
+async function doLogout() {
+  try { await api("/api/logout", {method: "POST"}); } catch (e) {}
+  location.reload();
+}
+
+/* ---------- 路由 ---------- */
+const ROUTES = ["overview", "chat", "history", "memory", "data"];
+function go(pg) { location.hash = "#/" + pg; }
+window.addEventListener("hashchange", render);
+function render() {
+  const pg = (location.hash.replace("#/", "") || "overview").split("?")[0];
+  if (!ROUTES.includes(pg)) { location.hash = "#/overview"; return; }
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.pg === pg));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("on"));
+  $("pg-" + pg).classList.add("on");
+  if (pg === "overview") loadOverview();
+  if (pg === "chat") { loadSessions(); if (CUR_SESS) loadMessages(CUR_SESS); }
+  if (pg === "history") loadHistory();
+  if (pg === "memory") loadFacts();
+  if (pg === "data") loadFiles();
+}
+
+/* ---------- 概况 ---------- */
+async function loadOverview() {
+  try {
+    const d = await api("/api/overview");
+    $("ovTitle").textContent = `经营概况 · ${d.month}`;
+    const momTxt = d.mom == null ? "上月无数据" : (d.mom >= 0 ? `▲ 环比 +${(d.mom * 100).toFixed(1)}%` : `▼ 环比 ${(d.mom * 100).toFixed(1)}%`);
+    $("ovBody").innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="t">${esc(d.month)} 总销售额</div><div class="v">¥${(+d.total).toLocaleString()}</div><div class="d ${d.mom < 0 ? "bad" : ""}">${esc(momTxt)}</div></div>
+        <div class="kpi"><div class="t">动销商品</div><div class="v">${d.n_products}</div><div class="d" style="color:#64748B">本月有销量</div></div>
+        <div class="kpi"><div class="t">销冠商品</div><div class="v" style="font-size:18px;padding-top:5px">${esc(d.top_name)}</div><div class="d">¥${(+d.top_value).toLocaleString()} · ${(d.top_share * 100).toFixed(1)}%</div></div>
+        <div class="kpi"><div class="t">风险商品（显著下降）</div><div class="v" style="${d.risk ? "color:#DC2626" : ""}">${d.risk}</div><div class="d ${d.risk ? "bad" : ""}">${d.risk ? "建议调整进货" : "暂无"}</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>每日销售额（${esc(d.month)}）</h3><div id="ovC1" class="chart"></div><button class="toolbtn" style="margin-top:8px" onclick="exportChart('ovC1','每日销售额')">导出 PNG</button></div>
+        <div class="card"><h3>品类占比</h3><div id="ovC2" class="chart"></div><button class="toolbtn" style="margin-top:8px" onclick="exportChart('ovC2','品类占比')">导出 PNG</button></div>
+        ${d.channel ? `<div class="card"><h3>渠道结构</h3><div id="ovC4" class="chart"></div><button class="toolbtn" style="margin-top:8px" onclick="exportChart('ovC4','渠道结构')">导出 PNG</button></div>` : ""}
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>商品销售额 Top8</h3><div id="ovC3" class="chart"></div><button class="toolbtn" style="margin-top:8px" onclick="exportChart('ovC3','商品销售额Top8')">导出 PNG</button></div>
+        <div class="card"><h3>趋势显著商品（周斜率）</h3>
+          <table><tr><th>商品</th><th>周变化</th><th>相对</th><th>判定</th></tr>
+          ${d.trend.map(t => `<tr><td>${esc(t["商品名称"])}</td>
+            <td style="color:${t["每期变化额"] < 0 ? "#DC2626" : "#059669"};font-weight:600">${t["每期变化额"]}</td>
+            <td>${(t["相对变化"] * 100).toFixed(1)}%</td>
+            <td><span class="pill ${t["趋势"] === "下降" ? "p-down" : "p-up"}">显著${esc(t["趋势"])}</span></td></tr>`).join("") ||
+            `<tr><td colspan="4" class="empty">本期无显著趋势商品</td></tr>`}
+          </table></div>
+      </div>`;
+    requestAnimationFrame(() => {
+      const dark = document.documentElement.dataset.theme === "dark";
+      const AX = {axisLine:{lineStyle:{color: dark ? "#334155" : "#E8ECF1"}},
+                  axisLabel:{color:"#94A3B8", fontSize:11},
+                  splitLine:{lineStyle:{color: dark ? "#1F2937" : "#F1F4F8"}}};
+      echarts.init($("ovC1")).setOption({grid:{left:56,right:12,top:14,bottom:24},
+        xAxis:{type:"category", data:d.daily.days, ...AX}, yAxis:{type:"value", ...AX},
+        series:[{type:"line", data:d.daily.values, smooth:true, symbol:"none",
+          lineStyle:{width:2.5, color:"#10B981"}, areaStyle:{color:"#10B98118"}}]});
+      if (d.category) echarts.init($("ovC2")).setOption({
+        legend:{bottom:0, textStyle:{color:"#64748B", fontSize:11}, itemWidth:10, itemHeight:10},
+        series:[{type:"pie", radius:["50%","72%"], center:["50%","42%"], label:{show:false},
+          data:d.category.names.map((n, i) => ({name:n, value:d.category.values[i]}))}]});
+      if (d.channel) echarts.init($("ovC4")).setOption({
+        legend:{bottom:0, textStyle:{color:"#64748B", fontSize:11}, itemWidth:10, itemHeight:10},
+        series:[{type:"pie", radius:["50%","72%"], center:["50%","42%"], label:{show:false},
+          data:d.channel.names.map((n, i) => ({name:n, value:d.channel.values[i]}))}]});
+      echarts.init($("ovC3")).setOption({grid:{left:100,right:44,top:8,bottom:22},
+        xAxis:{type:"value", ...AX}, yAxis:{type:"category", data:d.top8.map(x => x[0]).reverse(), ...AX},
+        series:[{type:"bar", data:d.top8.map(x => x[1]).reverse(), barWidth:13,
+          itemStyle:{borderRadius:[0,7,7,0], color:"#10B981"},
+          label:{show:true, position:"right", color:"#64748B", fontSize:11}}]});
+    });
+  } catch (e) {
+    $("ovBody").innerHTML = `<div class="empty">${esc(e.message)}<br><br>请先到「数据管理」上传数据集</div>`;
+  }
+}
+
+function exportChart(id, name) {
+  const chart = echarts.getInstanceByDom($(id));
+  if (!chart) return;
+  const url = chart.getDataURL({type: "png", pixelRatio: 2, backgroundColor: "#fff"});
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${name}.png`;
+  a.click();
+}
+
+/* ---------- 对话 ---------- */
+async function loadSessions() {
+  try {
+    const d = await api("/api/sessions");
+    $("sessList").innerHTML = d.sessions.map(s => `
+      <div class="sessitem ${s.id === CUR_SESS ? "on" : ""}" onclick="pickSess('${s.id}')">
+        <div class="t">${esc(s.title || s.id)}</div>
+        <div class="m"><span>${s.n_msgs} 条</span>
+          <span><a class="act" style="color:#0284C7;cursor:pointer" onclick="event.stopPropagation();exportSession('${s.id}')">导出</a>
+          ${ME && ME.role === "viewer" ? "" : `<span class="del" style="margin-left:8px" onclick="event.stopPropagation();delSess('${s.id}')">删</span>`}</span></div>
+      </div>`).join("") || `<div class="empty" style="padding:20px 0">暂无会话<br>发问即自动创建</div>`;
+  } catch (e) { $("sessList").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+function pickSess(sid) { CUR_SESS = sid; loadSessions(); loadMessages(sid); }
+async function delSess(sid) {
+  if (!confirm("删除该会话及全部消息？")) return;
+  await api("/api/sessions/" + sid, {method: "DELETE"});
+  if (CUR_SESS === sid) { CUR_SESS = null; $("chatlog").innerHTML = ""; }
+  loadSessions();
+}
+async function exportSession(sid) {
+  const r = await fetch(`/api/sessions/${sid}/export.md`, {credentials: "include"});
+  if (!r.ok) { alert("导出失败"); return; }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sid}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+async function loadMessages(sid) {
+  try {
+    const d = await api(`/api/sessions/${sid}/messages`);
+    const log = $("chatlog"); log.innerHTML = "";
+    (d.messages || []).forEach(m => {
+      if (m.role === "user") addUser(m.content);
+      else if (m.role === "assistant") {
+        const b = addAI("");
+        if (m.report && m.task_id) renderReport(b, "", m.task_id, m.report);
+        else b.innerHTML = esc(m.content);
+      }
+    });
+    if (!(d.messages || []).length)
+      log.innerHTML = `<div style="text-align:center;color:#94A3B8;margin-top:14vh;font-size:13.5px">新会话 · 输入第一个问题开始分析</div>`;
+  } catch (e) {}
+}
+function addUser(t) { const b = document.createElement("div"); b.className = "bubble user-b"; b.textContent = t;
+  $("chatlog").appendChild(b); $("chatlog").scrollTop = 1e9; }
+function addAI(html) { const b = document.createElement("div"); b.className = "bubble ai-b"; b.innerHTML = html;
+  $("chatlog").appendChild(b); $("chatlog").scrollTop = 1e9; return b; }
+
+async function ask() {
+  const q = $("q").value.trim();
+  if (!q || BUSY) return;
+  if (!CURRENT_FILE) { alert("请先到「数据管理」上传数据集"); return; }
+  BUSY = true; $("sendBtn").disabled = true; $("q").value = "";
+  addUser(q);
+  const bubble = addAI(`<div class="steps" id="steps"></div><div id="live">🧭 连接执行引擎…<span class="cursor"></span></div>`);
+  const stepsEl = bubble.querySelector("#steps"), liveEl = bubble.querySelector("#live");
+  let pills = [];
+  const setPills = () => stepsEl.innerHTML = pills.map(p => `<span class="step ${p.st}">${esc(p.t)}</span>`).join("");
+  let report = null, taskErr = null, taskId = null;
+  try {
+    const d = await api("/api/chat", {form: {question: q, file_id: CURRENT_FILE,
+      session_id: CUR_SESS || "", merchant_id: (ME && ME.merchant_id) || "demo-merchant"}});
+    taskId = d.task_id;
+    if (!CUR_SESS) { CUR_SESS = d.session_id; loadSessions(); }
+    const es = new EventSource(`/api/tasks/${taskId}/events`);
+    es.onmessage = async ev => {
+      const e = JSON.parse(ev.data);
+      if (e.type === "stage") {
+        const label = e.stage === "planning" ? "🧭 规划分析步骤" : e.stage === "reporting" ? "📝 生成报告" : `⚙️ 执行步骤 ${e.stage.split(":")[1]}`;
+        pills.push({t: label, st: "run"}); setPills();
+        liveEl.innerHTML = esc(label) + "…<span class='cursor'></span>";
+      } else if (e.type === "code_exec") {
+        const st = e.status === "success" ? "done" : (e.status === "writing" ? "run" : "bad");
+        const last = pills[pills.length - 1];
+        if (last && last.st === "run") { last.st = st; last.t = `步骤${e.step} 第${e.attempt}次 ${e.status}`; }
+        else pills.push({t: `步骤${e.step} 第${e.attempt}次 ${e.status}`, st});
+        setPills();
+        liveEl.innerHTML = `⚙️ 步骤${e.step} 第${e.attempt}次尝试 → ${esc(e.status)}<span class='cursor'></span>`;
+      } else if (e.type === "error") { taskErr = e.message || "未知错误"; es.close(); }
+      else if (e.type === "final") {
+        es.close();
+        const rr = await fetch(`/api/tasks/${taskId}/report`, {credentials: "include"});
+        report = await rr.json();
+      }
+    };
+    es.onerror = () => { if (!report && !taskErr) taskErr = "连接中断"; };
+    const t0 = Date.now();
+    while (!report && !taskErr) { if (Date.now() - t0 > 920000) { taskErr = "超时"; break; }
+      await new Promise(r => setTimeout(r, 400)); }
+    if (taskErr) {
+      pills.forEach(p => { if (p.st === "run") p.st = "bad"; }); setPills();
+      bubble.innerHTML = `<div class="steps">${stepsEl.innerHTML}</div><div style="color:#DC2626;font-size:13px">❌ ${esc(taskErr)}</div>`;
+    } else { renderReport(bubble, q, taskId, report); loadSessions(); }
+  } catch (e) { bubble.innerHTML = `<div style="color:#DC2626;font-size:13px">❌ ${esc(e.message)}</div>`; }
+  BUSY = false; $("sendBtn").disabled = false;
+}
+
+function renderReport(bubble, q, taskId, rep) {
+  const v = rep.verified ? `<span class="ver">✓ 数据溯源校验通过</span>`
+    : `<span class="ver warn">⚠ 部分结论未通过溯源校验，仅供参考</span>`;
+  const findings = (rep.findings || []).map((f, i) =>
+    `<div class="finding"><b>${i + 1}. ${esc(f.title)}</b>　<b class="v">${esc(f.value)}</b>
+     <span class="trace">依据: 步骤${f.evidence_step_id}</span><br>
+     <span style="color:#64748B">${esc(f.interpretation)}</span></div>`).join("") ||
+    `<div class="finding" style="color:#94A3B8">无显著发现</div>`;
+  const charts = (rep.charts || []).length
+    ? `<div class="charts">${rep.charts.map(c => `<img src="/api/tasks/${taskId}/charts/${encodeURIComponent(String(c).split("/").pop())}">`).join("")}</div>` : "";
+  const recos = (rep.recommendations || []).map(r =>
+    `<div class="reco"><span class="conf ${r.confidence === "high" ? "high" : "low"}">${r.confidence === "high" ? "高置信" : "低置信"}</span><b>${esc(r.action)}</b><br>
+     <span style="color:#64748B">理由: ${esc(r.reason)}</span>
+     ${r.data_gaps?.length ? `<br><span style="color:#B45309">⚠ 数据缺口: ${esc(r.data_gaps.join("、"))}</span>` : ""}</div>`).join("");
+  bubble.innerHTML =
+    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><b>📋 分析报告</b>${v}<span class="task">${esc(taskId)}${q ? " · 问：" + esc(q) : ""}</span></div>
+     ${esc(rep.summary)}${findings}${charts}${recos ? `<div style="font-weight:600;font-size:13px;margin-top:10px">💡 行动建议</div>` : ""}${recos}
+     ${(rep.caveats || []).length ? `<div class="caveat">备注: ${esc(rep.caveats.join("；"))}</div>` : ""}`;
+  $("chatlog").scrollTop = 1e9;
+}
+
+/* ---------- 历史 ---------- */
+function hisFilter(el) { document.querySelectorAll("#hisSeg span").forEach(s => s.classList.remove("on"));
+  el.classList.add("on"); HIS_VER = el.dataset.v; loadHistory(); }
+async function loadHistory() {
+  try {
+    const d = await api(`/api/history?q=${encodeURIComponent($("hisQ").value.trim())}&verified=${HIS_VER}`);
+    $("hisList").innerHTML = d.items.map(h => `
+      <div class="histrow" data-q="${esc(h.question)}" onclick="openReport('${h.task_id}', this.dataset.q)">
+        <div class="t"><div class="q">${esc(h.question)}</div>
+        <div class="m">${h.verified ? "✓ 已溯源" : "⚠ 未完全溯源"} · ${h.findings_n} 条结论 · ${esc(h.summary)}</div></div>
+        <span class="pill ${h.verified ? "p-up" : "p-flat"}">${h.verified ? "已溯源" : "待核"}</span>
+        <span class="time">${esc(h.created_at)}</span></div>`).join("") ||
+      `<div class="empty">没有匹配的历史报告</div>`;
+  } catch (e) { $("hisList").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+async function openReport(tid, q) {
+  const d = await api(`/api/tasks/${tid}/report`);
+  go("chat"); addUser(q || "（回看历史报告）");
+  const b = addAI(""); renderReport(b, q || "", tid, d);
+}
+
+/* ---------- 记忆 ---------- */
+async function loadFacts() {
+  try {
+    const d = await api("/api/memory/search?q=");
+    $("factsBox").innerHTML = `<h3>🧠 店铺事实卡（Agent 自动沉淀，每次分析都会注入）</h3>
+      ${d.all_facts.length ? d.all_facts.map(f => `<div class="factrow">
+        <span>${f.pinned ? "⭐ " : ""}${esc(f.content)}</span>
+        ${ME && ME.role === "viewer" ? "" : `<button onclick="togglePinFact(${f.id}, ${f.pinned ? 0 : 1})">${f.pinned ? "取消置顶" : "置顶"}</button><button onclick="deleteFact(${f.id})">删除</button>`}</div>`).join("")
+        : "暂无事实 —— 完成第一次分析后自动沉淀"}`;
+  } catch (e) { $("factsBox").innerHTML = `<h3>🧠 店铺事实卡</h3><div class="empty">${esc(e.message)}</div>`; }
+}
+async function togglePinFact(id, pinned) {
+  await api(`/api/memory/${id}`, {method: "PATCH", json: {pinned: !!pinned}});
+  loadFacts();
+}
+async function deleteFact(id) {
+  if (!confirm("确认删除该事实卡？")) return;
+  await api(`/api/memory/${id}`, {method: "DELETE"});
+  loadFacts();
+}
+async function memSearch() {
+  const q = $("memQ").value.trim();
+  if (!q) return;
+  try {
+    const d = await api(`/api/memory/search?q=${encodeURIComponent(q)}`);
+    const hl = s => esc(s).split(esc(q)).join(`<em>${esc(q)}</em>`);
+    $("memList").innerHTML = d.hits.map(h => `
+      <div class="memhit"><div class="q">${h.role === "user" ? "问" : "答"}：${hl(h.excerpt)}</div>
+      <div class="meta"><span>📁 ${esc(h.title || h.session_id)}</span>
+      ${h.task_id ? `<a onclick="openReport('${h.task_id}','')">🗂 查看关联报告</a>` : ""}
+      <span>🕒 ${esc(h.created_at)}</span></div></div>`).join("") ||
+      `<div class="empty">没有包含「${esc(q)}」的历史对话</div>`;
+  } catch (e) { $("memList").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+/* ---------- 数据管理 ---------- */
+const drop = $("drop");
+["dragover", "dragenter"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add("on"); }));
+["dragleave", "drop"].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove("on"); }));
+drop.addEventListener("drop", ev => uploadFile(ev.dataTransfer.files[0]));
+
+async function uploadFile(f) {
+  if (!f) return;
+  $("upstate").innerHTML = "⏳ 解析上传中…";
+  const fd = new FormData(); fd.append("file", f);
+  fd.append("merchant_id", (ME && ME.merchant_id) || "demo-merchant");
+  try {
+    const r = await fetch("/api/upload", {method: "POST", credentials: "include",
+      headers: {"X-Token": localStorage.getItem("token") || ""}, body: fd});
+    const d = await r.json();
+    if (!r.ok) { $("upstate").innerHTML = `<span class="err">✗ ${esc(d.detail || r.status)}</span>`; return; }
+    const p = d.preview, qt = d.quality || {};
+    $("upstate").innerHTML = `<span class="ok">✓ 已加载并设为当前数据集</span><br>
+      <b>${(+p.rows).toLocaleString()}</b> 行 · ${esc(p.date_range)} · file_id ${esc(d.file_id)}
+      <div style="overflow-x:auto"><table class="prev"><tr>${p.columns.slice(0, 10).map(h => `<th>${esc(h)}</th>`).join("")}</tr>
+      ${p.head.slice(0, 3).map(row => `<tr>${p.columns.slice(0, 10).map(c => `<td>${esc(row[c])}</td>`).join("")}</tr>`).join("")}</table></div>
+      <div>${Object.entries(qt).filter(([, v]) => v > 0).map(([k, v]) => `<span class="warn">⚠ ${esc(k)}: ${v}</span>`).join("　")
+        || `<span class="ok">✓ 质检全部通过（空值/重复/负值/日期解析）</span>`}</div>`;
+    loadFiles(); loadBadge();
+  } catch (e) { $("upstate").innerHTML = `<span class="err">✗ 上传失败: ${esc(e.message)}</span><br>
+    <span style="color:#64748B;font-size:11.5px">当前页面地址: <b>${esc(location.href)}</b></span>`; }
+}
+async function loadFiles() {
+  try {
+    const d = await api("/api/files");
+    $("fileList").innerHTML = `<table><tr><th>名称</th><th>行数</th><th>时间范围</th><th>质检</th><th>上传时间</th><th>操作</th></tr>
+      ${d.files.map(f => `<tr><td>${esc(f.name)}</td><td>${f.rows ? (+f.rows).toLocaleString() : "-"}</td><td>${esc(f.date_range)}</td>
+      <td>${Object.values(f.quality || {}).some(v => v > 0) ? `<span class="warn">有提醒</span>` : `<span class="ok">✓ 通过</span>`}</td>
+      <td class="time">${esc(f.created_at)}</td>
+      <td>${ME && ME.role === "viewer" ? `<span class="pill p-flat">只读</span>`
+        : f.is_current ? `<span class="pill p-up">使用中</span>`
+        : `<span class="pill p-flat" style="cursor:pointer" onclick="setCurrent('${f.file_id}')">设为当前</span>
+           <span style="color:#DC2626;cursor:pointer;font-size:12px" onclick="delFile('${f.file_id}')">删</span>`}</td></tr>`).join("")
+      || `<tr><td colspan="6" class="empty">还没有上传过数据</td></tr>`}</table>`;
+  } catch (e) { $("fileList").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+async function setCurrent(fid) { await api(`/api/files/${fid}/current`, {method: "POST"}); loadFiles(); loadBadge(); }
+async function delFile(fid) { if (!confirm("从列表隐藏该数据集？（物理文件保留）")) return;
+  await api("/api/files/" + fid, {method: "DELETE"}); loadFiles(); loadBadge(); }
+
+/* ---------- 徽章与启动 ---------- */
+async function loadBadge() {
+  try {
+    const d = await api("/api/files");
+    const cur = d.files.find(f => f.is_current) || d.files[0];
+    CURRENT_FILE = cur ? cur.file_id : "";
+    $("dsBadge").textContent = cur ? `当前数据集: ${cur.name} · ${cur.date_range} · ${(+cur.rows).toLocaleString()} 行`
+      : "尚未上传数据（请到「数据管理」上传）";
+  } catch (e) { $("dsBadge").textContent = "尚未上传数据"; }
+}
+async function boot() {
+  try { ME = await api("/api/me"); } catch (e) { return; }
+  document.body.dataset.role = ME.role || "staff";
+  $("v-login").classList.remove("on"); $("v-app").classList.add("on");
+  $("hello").textContent = "👤 " + (ME.username || "demo") + (ME.id === 0 ? "（demo 模式）" : "");
+  await loadBadge();
+  render();
+}
+applyTheme();
+boot();
+</script>
+</body>
+</html>
