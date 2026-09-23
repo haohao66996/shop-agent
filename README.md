@@ -1,5 +1,9 @@
 # 店铺经营分析 Agent
 
+[![ci](https://github.com/haohao66996/shop-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/haohao66996/shop-agent/actions/workflows/ci.yml) ![python](https://img.shields.io/badge/python-3.11+-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+
+> **开源说明**：本仓库为项目整理开源版，保留完整实现、测试与回归脚本。开发与测试在云端 GPU 服务器环境迭代完成，问题闭环过程见 [docs/测试报告.md](docs/测试报告.md)。
+
 自然语言提问 → 自动写 pandas 代码 → 沙箱执行 → 输出**带溯源、带图表**的经营分析报告。
 
 场景：门店经营决策缺乏数据支撑（无 BI、无数据团队），老板问"这个月卖得怎么样""哪些商品该少进货"需要人工取数做表。
@@ -46,7 +50,7 @@ rlimit 约束 CPU、内存、文件句柄，配合墙钟超时，死循环与危
 
 ## 工程质量
 
-- 五页 SPA 工作台（原生 JS + ECharts，零构建）、KPI 看板、Excel 导出
+- 单页工作台（原生 JS + ECharts，5 个视图，零构建）、KPI 看板、Excel 导出
 - SSE 五阶段实时展示：`planning → analysis → code_exec → chart → final`
 - **vLLM → DeepSeek API 降级链**，本地模型不可用时自动降级
 - 异步任务 + 幂等键防重复提交
@@ -63,10 +67,10 @@ rlimit 约束 CPU、内存、文件句柄，配合墙钟超时，死循环与危
 
 ## 已知问题（诚实清单）
 
-系统当前为 MVP。测试中发现并记录了 **2 个 P0 + 3 个 P1 + 3 个 P2**，均带根因分析与任务 ID，修复方案已确定但**尚未全部完成**：
+系统当前为 MVP。端到端测试发现并记录了 **2 个 P0 + 3 个 P1 + 3 个 P2**，全部修复闭环（过程与复测记录见 [docs/测试报告.md](docs/测试报告.md)）：
 
-- P0-1：报告数值与执行结果不一致时的打回重写链路
-- P0-2：千分位逗号导致 grounding 误判（`"1,234"` 被当作非数值）
+- P0-1：grounding 千分位数值误判（`"135,015"` 被拆成 `135`，正确报告被判未验证）
+- P0-2：「这个月」时间语义漂移（返回了上个月数据）
 - P1：含 `rc=-9` 的执行失败需区分「超时」与「资源超限」两种语义
 
 完整清单见测试报告。**不声称已上线供生产使用。**
