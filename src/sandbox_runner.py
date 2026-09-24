@@ -86,6 +86,9 @@ def product_trend(df=None, product_col: str = "商品名称",
         df = load_data()
     if "日期" not in df.columns:
         return pd.DataFrame(columns=cols)
+    df = df.copy()
+    df["日期"] = pd.to_datetime(df["日期"], errors="coerce")   # 容忍字符串日期(Analyst 生成代码常见)
+    df = df.dropna(subset=["日期"])
     g = df.groupby([product_col, pd.Grouper(key="日期", freq=freq)])[amount_col].agg(["sum", "count"])
     rows = []
     for prod, ts in g.groupby(level=0):
