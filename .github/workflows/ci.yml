@@ -9,6 +9,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: 安装测试依赖
-        run: pip install pytest pydantic pydantic-settings openai
+        run: pip install pytest pydantic pydantic-settings openai pandas
       - name: 单元测试（grounding / 趋势意图 / 商品趋势）
         run: pytest tests/ -v
